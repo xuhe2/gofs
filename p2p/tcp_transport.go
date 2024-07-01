@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"sync"
 )
@@ -21,26 +22,29 @@ func NewTCPPeer(conn net.Conn, outBound bool) *TCPPeer {
 	}
 }
 
+type TCPTransportOpts struct {
+	ListenAddress string
+	ShakeHands    HandshakeFunc
+	Decoder       Decoder
+}
+
 type TCPTransport struct {
-	listenAddress string
-	listener      net.Listener
-	shakeHands    HandshakeFunc
-	decoder       Decoder
+	TCPTransportOpts
+	listener net.Listener
 
 	mu    sync.RWMutex
 	peers map[net.Addr]Peer
 }
 
-func NewTCPTransport(listenAddress string) *TCPTransport {
+func NewTCPTransport(opts TCPTransportOpts) *TCPTransport {
 	return &TCPTransport{
-		shakeHands:    NOPHandshake,
-		listenAddress: listenAddress,
+		TCPTransportOpts: opts,
 	}
 }
 
 func (t *TCPTransport) ListenAndAccept() error {
 	var err error
-	t.listener, err = net.Listen("tcp", t.listenAddress)
+	t.listener, err = net.Listen("tcp", t.ListenAddress)
 	if err != nil {
 		return err
 	}
@@ -53,6 +57,7 @@ func (t *TCPTransport) ListenAndAccept() error {
 func (t *TCPTransport) startAcceptLoop() {
 	for {
 		conn, err := t.listener.Accept()
+		fmt.Printf("Accepted connection from %v\n", conn.RemoteAddr())
 		if err != nil {
 			fmt.Printf("Error accepting connection: %v\n", err)
 		}
@@ -65,20 +70,26 @@ func (t *TCPTransport) handleConnect(conn net.Conn) {
 	peer := NewTCPPeer(conn, false) // we are the inbound peer
 
 	// perform the handshake
-	if err := t.shakeHands(peer); err != nil {
+	if err := t.ShakeHands(peer); err != nil {
 		fmt.Printf("Handshake failed: %v\n", err)
+		peer.conn.Close()
 		return
 	}
 
-	message := new(interface{})
+	message := &Message{}
 	for {
-		if err := t.decoder.Decode(conn, message); err != nil {
+		if err := t.Decoder.Decode(peer.conn, message); err != nil {
+			if err == io.EOF {
+				fmt.Printf("Connection closed by peer: %v\n", peer.conn.RemoteAddr())
+				return
+			}
 			fmt.Printf("Error decoding message: %v\n", err)
 			continue
 		}
-		// handle the message
-		// ...
-	}
+		// set the network address in order to send back info
+		message.From = peer.conn.RemoteAddr()
 
-	fmt.Printf("Peer connected from %v\n", peer.conn.RemoteAddr())
+		// handle the message
+		fmt.Printf("Received message: %v\n", string(message.Payload))
+	}
 }
