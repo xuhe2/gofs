@@ -36,3 +36,16 @@ func TestStorage(t *testing.T) {
 		t.Error("Expected 'hello world', got", string(b))
 	}
 }
+
+func TestDelete(t *testing.T) {
+	opts := StorageOpts{
+		PathTransformFunc: SHA1PathTransformFunc,
+	}
+	storage := NewStorage(opts)
+	key := "dataDir"
+
+	err := storage.Delete(key)
+	if storage.Has(key) {
+		t.Error(err)
+	}
+}

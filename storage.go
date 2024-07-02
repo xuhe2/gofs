@@ -107,3 +107,18 @@ func (s *Storage) Read(key string) (io.Reader, error) {
 	}
 	return buf, err
 }
+
+func (s *Storage) Delete(key string) error {
+	pathKey := s.PathTransformFunc(key)
+	err := os.RemoveAll(pathKey.getFullPath())
+	return err
+}
+
+func (s *Storage) Has(key string) bool {
+	pathKey := s.PathTransformFunc(key)
+
+	if _, err := os.Stat(pathKey.getFullPath()); err != nil {
+		return false
+	}
+	return true
+}
