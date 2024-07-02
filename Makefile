@@ -13,8 +13,12 @@ run:
 run-build: build run
 
 # clean up the build artifacts
-clean:
+clean-bin:
 	rm -f bin/${BINARY_NAME}
+
+# clean the storage data
+clean-data:
+	rm -r dataDir
 
 # test the go code
 test:
