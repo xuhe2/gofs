@@ -22,15 +22,22 @@ func NewTCPPeer(conn net.Conn, outBound bool) *TCPPeer {
 	}
 }
 
+// implement the interface, it can
+func (p *TCPPeer) Close() error {
+	return p.conn.Close()
+}
+
 type TCPTransportOpts struct {
 	ListenAddress string
 	ShakeHands    HandshakeFunc
 	Decoder       Decoder
+	OnPeer        func(Peer) error
 }
 
 type TCPTransport struct {
 	TCPTransportOpts
-	listener net.Listener
+	listener   net.Listener
+	rpcChannel chan RPC
 
 	mu    sync.RWMutex
 	peers map[net.Addr]Peer
@@ -39,6 +46,7 @@ type TCPTransport struct {
 func NewTCPTransport(opts TCPTransportOpts) *TCPTransport {
 	return &TCPTransport{
 		TCPTransportOpts: opts,
+		rpcChannel:       make(chan RPC),
 	}
 }
 
@@ -54,6 +62,12 @@ func (t *TCPTransport) ListenAndAccept() error {
 	return nil
 }
 
+// consume implement the interface, it is a read-only channel
+// read the info from the peer in the network
+func (t *TCPTransport) Consume() <-chan RPC {
+	return t.rpcChannel
+}
+
 func (t *TCPTransport) startAcceptLoop() {
 	for {
 		conn, err := t.listener.Accept()
@@ -67,18 +81,31 @@ func (t *TCPTransport) startAcceptLoop() {
 }
 
 func (t *TCPTransport) handleConnect(conn net.Conn) {
+	var err error
+
+	// close the connection if the function is closed
+	defer func() {
+		conn.Close()
+	}()
+
 	peer := NewTCPPeer(conn, false) // we are the inbound peer
 
 	// perform the handshake
-	if err := t.ShakeHands(peer); err != nil {
+	if err = t.ShakeHands(peer); err != nil {
 		fmt.Printf("Handshake failed: %v\n", err)
-		peer.conn.Close()
 		return
 	}
 
-	message := &Message{}
+	if t.OnPeer != nil {
+		if err = t.OnPeer(peer); err != nil {
+			fmt.Printf("OnPeer failed: %v\n", err)
+			return
+		}
+	}
+
+	message := RPC{}
 	for {
-		if err := t.Decoder.Decode(peer.conn, message); err != nil {
+		if err = t.Decoder.Decode(peer.conn, &message); err != nil {
 			if err == io.EOF {
 				fmt.Printf("Connection closed by peer: %v\n", peer.conn.RemoteAddr())
 				return
@@ -90,6 +117,6 @@ func (t *TCPTransport) handleConnect(conn net.Conn) {
 		message.From = peer.conn.RemoteAddr()
 
 		// handle the message
-		fmt.Printf("Received message: %v\n", string(message.Payload))
+		t.rpcChannel <- message
 	}
 }

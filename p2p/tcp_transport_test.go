@@ -11,6 +11,7 @@ func TestTCPTransport(t *testing.T) {
 
 	opts := &TCPTransportOpts{
 		ListenAddress: listenAddress,
+		Decoder:       DefaultDecoder{},
 	}
 
 	tr := NewTCPTransport(*opts)

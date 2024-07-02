@@ -15,3 +15,7 @@ run-build: build run
 # clean up the build artifacts
 clean:
 	rm -f bin/${BINARY_NAME}
+
+# test the go code
+test:
+	@go test ./...
