@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
@@ -68,9 +69,9 @@ func (s *Storage) writeStream(key string, r io.Reader) error {
 	}
 
 	// get the file name by using the md5
-	pathAndFileName := pathKey.getFullPath()
+	fullPath := pathKey.getFullPath()
 
-	f, err := os.Create(pathAndFileName)
+	f, err := os.Create(fullPath)
 	if err != nil {
 		return err
 	}
@@ -80,7 +81,29 @@ func (s *Storage) writeStream(key string, r io.Reader) error {
 		return err
 	}
 
-	fmt.Printf("Wrote %d bytes to %s\n", n, pathAndFileName)
+	fmt.Printf("Wrote %d bytes to %s\n", n, fullPath)
 
 	return nil
+}
+
+func (s *Storage) readStream(key string) (io.ReadCloser, error) {
+	pathKey := s.PathTransformFunc(key)
+	return os.Open(pathKey.getFullPath())
+}
+
+func (s *Storage) Read(key string) (io.Reader, error) {
+	// open the file
+	f, err := s.readStream(key)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	// read the content
+	buf := new(bytes.Buffer)
+	_, err = buf.ReadFrom(f)
+	if err != nil {
+		return nil, err
+	}
+	return buf, err
 }

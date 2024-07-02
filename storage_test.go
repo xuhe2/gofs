@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"io"
 	"testing"
 )
 
@@ -19,8 +20,19 @@ func TestStorage(t *testing.T) {
 	}
 	storage := NewStorage(opts)
 
+	key := "dataDir"
 	data := bytes.NewReader([]byte("hello world"))
-	if err := storage.writeStream("dataDir", data); err != nil {
+	if err := storage.writeStream(key, data); err != nil {
 		t.Error(err)
+	}
+
+	r, err := storage.Read(key)
+	if err != nil {
+		t.Error(err)
+	}
+
+	b, _ := io.ReadAll(r)
+	if string(b) != "hello world" {
+		t.Error("Expected 'hello world', got", string(b))
 	}
 }
