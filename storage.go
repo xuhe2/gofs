@@ -10,12 +10,16 @@ import (
 	"strings"
 )
 
+const (
+	DefaultRootDirName = "dataRootDir"
+)
+
 type PathTransformFunc func(string) PathKey
 
 func DefaultPathTransformFunc(key string) PathKey {
 	return PathKey{
 		Path:     key,
-		FileName: "",
+		FileName: key,
 	}
 }
 
@@ -51,6 +55,7 @@ func (p PathKey) getPathFirstDirName() string {
 }
 
 type StorageOpts struct {
+	RootDirName       string            //the name of root dir that contains all dir/file
 	PathTransformFunc PathTransformFunc //from the key to the path to store the file
 }
 
@@ -59,6 +64,14 @@ type Storage struct {
 }
 
 func NewStorage(opts StorageOpts) *Storage {
+	// if the path transform func is not set, use the default one
+	if opts.PathTransformFunc == nil {
+		opts.PathTransformFunc = DefaultPathTransformFunc
+	}
+	// if the root dir name is empty
+	if len(opts.RootDirName) == 0 {
+		opts.RootDirName = DefaultRootDirName
+	}
 	return &Storage{
 		StorageOpts: opts,
 	}
@@ -67,15 +80,17 @@ func NewStorage(opts StorageOpts) *Storage {
 func (s *Storage) writeStream(key string, r io.Reader) error {
 	pathKey := s.PathTransformFunc(key)
 
+	// get the path name with the root dir name
+	pathWithRootDirName := s.RootDirName + "/" + pathKey.Path
 	// if the dir is note exists
-	if err := os.MkdirAll(pathKey.Path, os.ModePerm); err != nil {
+	if err := os.MkdirAll(pathWithRootDirName, os.ModePerm); err != nil {
 		return err
 	}
 
 	// get the file name by using the md5
-	fullPath := pathKey.getFullPath()
+	fullPathWithRoorDirName := s.RootDirName + "/" + pathKey.getFullPath()
 
-	f, err := os.Create(fullPath)
+	f, err := os.Create(fullPathWithRoorDirName)
 	if err != nil {
 		return err
 	}
@@ -85,14 +100,15 @@ func (s *Storage) writeStream(key string, r io.Reader) error {
 		return err
 	}
 
-	fmt.Printf("Wrote %d bytes to %s\n", n, fullPath)
+	fmt.Printf("Wrote %d bytes to %s\n", n, fullPathWithRoorDirName)
 
 	return nil
 }
 
 func (s *Storage) readStream(key string) (io.ReadCloser, error) {
 	pathKey := s.PathTransformFunc(key)
-	return os.Open(pathKey.getFullPath())
+	fullPathWithRoorDirName := s.RootDirName + "/" + pathKey.getFullPath()
+	return os.Open(fullPathWithRoorDirName)
 }
 
 func (s *Storage) Read(key string) (io.Reader, error) {
@@ -114,13 +130,16 @@ func (s *Storage) Read(key string) (io.Reader, error) {
 
 func (s *Storage) Delete(key string) error {
 	pathKey := s.PathTransformFunc(key)
-	return os.RemoveAll(pathKey.getPathFirstDirName())
+	// get the dirst dir name with root dir name
+	pathFirstDirNameWithRootDirName := s.RootDirName + "/" + pathKey.getPathFirstDirName()
+	return os.RemoveAll(pathFirstDirNameWithRootDirName)
 }
 
 func (s *Storage) Has(key string) bool {
 	pathKey := s.PathTransformFunc(key)
-
-	if _, err := os.Stat(pathKey.getFullPath()); err != nil {
+	// get full path name with root dir name
+	fullPathWithRoorDirName := s.RootDirName + "/" + pathKey.getFullPath()
+	if _, err := os.Stat(fullPathWithRoorDirName); err != nil {
 		return false
 	}
 	return true
