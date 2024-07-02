@@ -46,6 +46,10 @@ func (p PathKey) getFullPath() string {
 	return fmt.Sprintf("%s/%s", p.Path, p.FileName)
 }
 
+func (p PathKey) getPathFirstDirName() string {
+	return strings.Split(p.getFullPath(), "/")[0]
+}
+
 type StorageOpts struct {
 	PathTransformFunc PathTransformFunc //from the key to the path to store the file
 }
@@ -110,9 +114,7 @@ func (s *Storage) Read(key string) (io.Reader, error) {
 
 func (s *Storage) Delete(key string) error {
 	pathKey := s.PathTransformFunc(key)
-	pathFirstDirName := strings.Split(pathKey.getFullPath(), "/")[0]
-	err := os.RemoveAll(pathFirstDirName)
-	return err
+	return os.RemoveAll(pathKey.getPathFirstDirName())
 }
 
 func (s *Storage) Has(key string) bool {
