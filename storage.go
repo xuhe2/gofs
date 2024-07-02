@@ -110,7 +110,8 @@ func (s *Storage) Read(key string) (io.Reader, error) {
 
 func (s *Storage) Delete(key string) error {
 	pathKey := s.PathTransformFunc(key)
-	err := os.RemoveAll(pathKey.getFullPath())
+	pathFirstDirName := strings.Split(pathKey.getFullPath(), "/")[0]
+	err := os.RemoveAll(pathFirstDirName)
 	return err
 }
 
