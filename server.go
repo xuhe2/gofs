@@ -79,6 +79,10 @@ func (s *FileServer) Stop() {
 // connect to bootstrap nodes
 // if the connection is successful, the fileServer will start to listen and accept the connection
 func (s *FileServer) connectBootstrapNodesNetwork() error {
+	if len(s.BootstrapNodes) == 0 {
+		return nil
+	}
+
 	for _, bootstrapNodeAddress := range s.BootstrapNodes {
 		// use `go routine` can avoid the blocking of the main task loop
 		// but we can not return err in the `go routine`
