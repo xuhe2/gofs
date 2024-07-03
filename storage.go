@@ -77,6 +77,11 @@ func NewStorage(opts StorageOpts) *Storage {
 	}
 }
 
+// write to a data file
+func (s *Storage) Write(key string, r io.Reader) error {
+	return s.writeStream(key, r)
+}
+
 func (s *Storage) writeStream(key string, r io.Reader) error {
 	pathKey := s.PathTransformFunc(key)
 
