@@ -128,6 +128,7 @@ func (s *Storage) Read(key string) (io.Reader, error) {
 	return buf, err
 }
 
+// delete the specific file
 func (s *Storage) Delete(key string) error {
 	pathKey := s.PathTransformFunc(key)
 	// get the dirst dir name with root dir name
@@ -135,6 +136,7 @@ func (s *Storage) Delete(key string) error {
 	return os.RemoveAll(pathFirstDirNameWithRootDirName)
 }
 
+// check if the file exists
 func (s *Storage) Has(key string) bool {
 	pathKey := s.PathTransformFunc(key)
 	// get full path name with root dir name
@@ -143,4 +145,9 @@ func (s *Storage) Has(key string) bool {
 		return false
 	}
 	return true
+}
+
+// clear the all data
+func (s *Storage) Clear() error {
+	return os.RemoveAll(s.RootDirName)
 }

@@ -38,14 +38,26 @@ func TestStorage(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	opts := StorageOpts{
-		PathTransformFunc: SHA1PathTransformFunc,
-	}
-	storage := NewStorage(opts)
+	storage := newStorage()
+	defer tearDown(t, storage)
 	key := "dataDir"
 
 	err := storage.Delete(key)
 	if storage.Has(key) {
+		t.Error(err)
+	}
+}
+
+func newStorage() *Storage {
+	opts := StorageOpts{
+		PathTransformFunc: SHA1PathTransformFunc,
+	}
+	storage := NewStorage(opts)
+	return storage
+}
+
+func tearDown(t *testing.T, storage *Storage) {
+	if err := storage.Clear(); err != nil {
 		t.Error(err)
 	}
 }
