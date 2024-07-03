@@ -91,11 +91,13 @@ func (t *TCPTransport) startAcceptLoop() {
 		}
 		log.Printf("TCPTransport: accepted connection from %v\n", conn.RemoteAddr())
 		// handle the connection in a separate goroutine
-		go t.handleConnect(conn)
+		go t.handleConnect(conn, false)
 	}
 }
 
-func (t *TCPTransport) handleConnect(conn net.Conn) {
+// it has the for loop, so it is a blocking function
+// use this function with `go` keyword to run it in a separate goroutine
+func (t *TCPTransport) handleConnect(conn net.Conn, outBound bool) {
 	var err error
 
 	// close the connection if the function is closed
@@ -103,7 +105,7 @@ func (t *TCPTransport) handleConnect(conn net.Conn) {
 		conn.Close()
 	}()
 
-	peer := NewTCPPeer(conn, false) // we are the inbound peer
+	peer := NewTCPPeer(conn, outBound) // we are the inbound peer
 
 	// perform the handshake
 	if err = t.ShakeHands(peer); err != nil {
@@ -135,4 +137,16 @@ func (t *TCPTransport) handleConnect(conn net.Conn) {
 		// handle the message
 		t.rpcChannel <- message
 	}
+}
+
+// tcp `Dial` function to connect to the peer
+func (t *TCPTransport) Dial(address string) error {
+	conn, err := net.Dial("tcp", address)
+	if err != nil {
+		return err
+	}
+	// handle the connection
+	go t.handleConnect(conn, true)
+
+	return nil
 }

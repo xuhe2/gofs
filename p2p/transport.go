@@ -10,4 +10,5 @@ type Transport interface {
 	ListenAndAccept() error //start listen and accept the network info
 	Consume() <-chan RPC    // consume the info from network, use RPC.Payload to get the info
 	Close() error           //close the transport
+	Dial(string) error      //dial to a peer
 }

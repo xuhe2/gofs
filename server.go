@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/xuhe2/go-fs/p2p"
 )
@@ -10,6 +11,7 @@ type FileServerOpts struct {
 	StorageRootFileName string
 	PathTransformFunc   PathTransformFunc
 	Transport           p2p.Transport
+	BootstrapNodes      []string // the peer need to connect
 }
 
 type FileServer struct {
@@ -38,6 +40,10 @@ func (s *FileServer) Start() error {
 		return err
 	}
 
+	// connect to bootstrap nodes
+	s.connectBootstrapNodesNetwork()
+
+	// start the main task loop
 	s.runMainTaskLoop()
 
 	return nil
@@ -68,4 +74,19 @@ func (s *FileServer) runMainTaskLoop() {
 // close the fileServer's main task
 func (s *FileServer) Stop() {
 	close(s.quitSignalChannel)
+}
+
+// connect to bootstrap nodes
+// if the connection is successful, the fileServer will start to listen and accept the connection
+func (s *FileServer) connectBootstrapNodesNetwork() error {
+	for _, bootstrapNodeAddress := range s.BootstrapNodes {
+		// use `go routine` can avoid the blocking of the main task loop
+		// but we can not return err in the `go routine`
+		go func(address string) {
+			if err := s.Transport.Dial(address); err != nil {
+				log.Printf("failed to connect to bootstrap node %s: %v\n", address, err)
+			}
+		}(bootstrapNodeAddress)
+	}
+	return nil
 }

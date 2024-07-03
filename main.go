@@ -18,6 +18,7 @@ func main() {
 		StorageRootFileName: "",
 		PathTransformFunc:   SHA1PathTransformFunc,
 		Transport:           tCPTransport,
+		BootstrapNodes:      []string{":4000"},
 	}
 
 	fileServer := NewFileServer(fileServerOpts)
