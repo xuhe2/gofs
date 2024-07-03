@@ -79,6 +79,13 @@ func (t *TCPTransport) Consume() <-chan RPC {
 func (t *TCPTransport) startAcceptLoop() {
 	for {
 		conn, err := t.listener.Accept()
+		// if user action close the fileServer
+		// and use the Close() function to close the listener
+		if err == net.ErrClosed {
+			fmt.Printf("TCPTransport: listener closed\n")
+			return
+		}
+
 		if err != nil {
 			fmt.Printf("Error accepting connection: %v\n", err)
 		}
