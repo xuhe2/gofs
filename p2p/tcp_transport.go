@@ -3,6 +3,7 @@ package p2p
 import (
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"sync"
 )
@@ -31,7 +32,7 @@ type TCPTransportOpts struct {
 	ListenAddress string
 	ShakeHands    HandshakeFunc
 	Decoder       Decoder
-	OnPeer        func(Peer) error
+	OnPeer        func(Peer) error //it can be nil
 }
 
 type TCPTransport struct {
@@ -57,6 +58,8 @@ func (t *TCPTransport) ListenAndAccept() error {
 		return err
 	}
 
+	log.Printf("Listening on %s\n", t.ListenAddress)
+
 	go t.startAcceptLoop() // start the accept loop in a separate goroutine
 
 	return nil
@@ -71,10 +74,10 @@ func (t *TCPTransport) Consume() <-chan RPC {
 func (t *TCPTransport) startAcceptLoop() {
 	for {
 		conn, err := t.listener.Accept()
-		fmt.Printf("Accepted connection from %v\n", conn.RemoteAddr())
 		if err != nil {
 			fmt.Printf("Error accepting connection: %v\n", err)
 		}
+		log.Printf("TCPTransport: accepted connection from %v\n", conn.RemoteAddr())
 		// handle the connection in a separate goroutine
 		go t.handleConnect(conn)
 	}
@@ -96,6 +99,7 @@ func (t *TCPTransport) handleConnect(conn net.Conn) {
 		return
 	}
 
+	// if `OnPeer` function not exists, do nothing
 	if t.OnPeer != nil {
 		if err = t.OnPeer(peer); err != nil {
 			fmt.Printf("OnPeer failed: %v\n", err)

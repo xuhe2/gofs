@@ -2,36 +2,35 @@ package main
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/xuhe2/go-fs/p2p"
 )
 
-func OnPeer(p2p.Peer) error {
-	fmt.Println("new peer connected")
-	// do something
-	return nil
-}
-
 func main() {
+	// create a TCP transport
 	opts := p2p.TCPTransportOpts{
 		ListenAddress: ":3000",
 		Decoder:       p2p.DefaultDecoder{},
 		ShakeHands:    p2p.NOPHandshake,
-		OnPeer:        OnPeer,
 	}
-	tr := p2p.NewTCPTransport(opts)
+	tCPTransport := p2p.NewTCPTransport(opts)
 
-	f := func() {
-		for {
-			msg := <-tr.Consume()
-			fmt.Printf("received message: %s\n", msg)
-		}
+	// create a file server
+	fileServerOpts := FileServerOpts{
+		StorageRootFileName: "",
+		PathTransformFunc:   SHA1PathTransformFunc,
+		Transport:           tCPTransport,
 	}
-	go f()
 
-	if err := tr.ListenAndAccept(); err != nil {
-		log.Fatal(err)
+	fileServer := NewFileServer(fileServerOpts)
+	//start the file server service
+	if err := fileServer.Start(); err != nil {
+		panic(err)
+	}
+
+	for {
+		msg := <-fileServer.Transport.Consume()
+		fmt.Printf("Received message: %v\n", msg.Payload)
 	}
 
 	select {}
