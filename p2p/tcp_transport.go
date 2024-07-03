@@ -47,8 +47,13 @@ type TCPTransport struct {
 func NewTCPTransport(opts TCPTransportOpts) *TCPTransport {
 	return &TCPTransport{
 		TCPTransportOpts: opts,
-		rpcChannel:       make(chan RPC),
+		rpcChannel:       make(chan RPC), //it is a message queue
 	}
+}
+
+// close the tcp transport
+func (t *TCPTransport) Close() error {
+	return t.listener.Close()
 }
 
 func (t *TCPTransport) ListenAndAccept() error {

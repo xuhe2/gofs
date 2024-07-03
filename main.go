@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/xuhe2/go-fs/p2p"
 )
 
@@ -27,11 +25,4 @@ func main() {
 	if err := fileServer.Start(); err != nil {
 		panic(err)
 	}
-
-	for {
-		msg := <-fileServer.Transport.Consume()
-		fmt.Printf("Received message: %v\n", msg.Payload)
-	}
-
-	select {}
 }
