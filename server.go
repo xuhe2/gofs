@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"sync"
 
 	"github.com/xuhe2/go-fs/p2p"
 )
@@ -17,8 +18,11 @@ type FileServerOpts struct {
 type FileServer struct {
 	FileServerOpts
 
+	peers    map[string]p2p.Peer
+	peerLock sync.Mutex
+
 	storage           *Storage
-	quitSignalChannel chan struct{}
+	quitSignalChannel chan struct{} //receive the quit signal from main program to stop main task loop
 }
 
 func NewFileServer(fileServerOpts FileServerOpts) *FileServer {
@@ -30,6 +34,7 @@ func NewFileServer(fileServerOpts FileServerOpts) *FileServer {
 		FileServerOpts:    fileServerOpts,
 		storage:           NewStorage(storageOpts),
 		quitSignalChannel: make(chan struct{}),
+		peers:             make(map[string]p2p.Peer),
 	}
 }
 
@@ -46,6 +51,24 @@ func (s *FileServer) Start() error {
 	// start the main task loop
 	s.runMainTaskLoop()
 
+	return nil
+}
+
+func (s *FileServer) OnPeer(peer p2p.Peer) error {
+	// add a peerlock to avoid the race condition
+	// when the peer is added, we need to lock the peer map
+	s.peerLock.Lock()
+	defer s.peerLock.Unlock()
+
+	// check the peers
+	peerRemoteAddress := peer.GetRemoteAddr()
+	if _, ok := s.peers[peerRemoteAddress]; ok {
+		// if the peer is already in the map, we return the error
+		return fmt.Errorf("peer %s is already in the map", peerRemoteAddress)
+	}
+
+	// if the peer is not in the map, we add it to the map
+	s.peers[peerRemoteAddress] = peer
 	return nil
 }
 

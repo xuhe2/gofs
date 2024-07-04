@@ -21,7 +21,10 @@ func createFileServer(ListenAddress string, StorageRootFileName string, Bootstra
 		BootstrapNodes:      BootstrapNodes,
 	}
 
-	return NewFileServer(fileServerOpts)
+	fileServer := NewFileServer(fileServerOpts)
+	tCPTransport.OnPeer = fileServer.OnPeer
+
+	return fileServer
 }
 
 func main() {

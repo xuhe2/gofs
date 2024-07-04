@@ -2,6 +2,7 @@ package p2p
 
 // peer is an interface for a remote node in the network.
 type Peer interface {
+	GetRemoteAddr() string
 	Close() error
 }
 

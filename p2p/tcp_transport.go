@@ -16,6 +16,11 @@ type TCPPeer struct {
 	outBound bool
 }
 
+// get remote address
+func (p *TCPPeer) GetRemoteAddr() string {
+	return p.conn.RemoteAddr().String()
+}
+
 func NewTCPPeer(conn net.Conn, outBound bool) *TCPPeer {
 	return &TCPPeer{
 		conn:     conn,
