@@ -83,16 +83,15 @@ func (s *FileServer) broadcastData(p *Payload) error {
 // store the data in the storage
 // and broadcast the data to the network
 func (s *FileServer) StoreData(key string, r io.Reader) error {
+	// copy the reader
+	buf := new(bytes.Buffer)
+	tee := io.TeeReader(r, buf)
+
 	// store the data in the storage
-	if err := s.storage.Write(key, r); err != nil {
+	if err := s.storage.Write(key, tee); err != nil {
 		return err
 	}
 	// and broadcast the data to the network
-	buf := new(bytes.Buffer)
-	if _, err := io.Copy(buf, r); err != nil {
-		return err
-	}
-
 	p := &Payload{
 		Key:  key,
 		Data: buf.Bytes(),
@@ -131,7 +130,11 @@ func (s *FileServer) runMainTaskLoop() {
 	for {
 		select {
 		case msg := <-s.Transport.Consume():
-			fmt.Println("received msg:", msg)
+			payload := &Payload{}
+			if err := gob.NewDecoder(bytes.NewReader(msg.Payload)).Decode(payload); err != nil {
+				log.Fatalf("failed to decode the payload: %v\n", err)
+			}
+			fmt.Printf("msg: %+v\n", payload)
 		case <-s.quitSignalChannel:
 			// if main program send the quit signal
 			//stop the main task loop
