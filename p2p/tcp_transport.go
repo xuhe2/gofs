@@ -16,6 +16,12 @@ type TCPPeer struct {
 	outBound bool
 }
 
+// send the bytes info
+func (p *TCPPeer) SendBytes(data []byte) error {
+	_, err := p.conn.Write(data)
+	return err
+}
+
 // get remote address
 func (p *TCPPeer) GetRemoteAddr() string {
 	return p.conn.RemoteAddr().String()

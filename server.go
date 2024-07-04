@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
+	"io"
 	"log"
 	"sync"
 
@@ -52,6 +55,49 @@ func (s *FileServer) Start() error {
 	s.runMainTaskLoop()
 
 	return nil
+}
+
+type Payload struct {
+	Key  string
+	Data []byte
+}
+
+// broadcast the data to the network
+func (s *FileServer) broadcastData(p *Payload) error {
+	buf := new(bytes.Buffer)
+	// encode the payload to the buffer
+	if err := gob.NewEncoder(buf).Encode(p); err != nil {
+		return err
+	}
+
+	// send the payload to all the peers
+	for _, peer := range s.peers {
+		// send the payload to the peer
+		if err := peer.SendBytes(buf.Bytes()); err != nil {
+			log.Printf("send data to peer %s failed: %s", peer.GetRemoteAddr(), err)
+		}
+	}
+	return nil
+}
+
+// store the data in the storage
+// and broadcast the data to the network
+func (s *FileServer) StoreData(key string, r io.Reader) error {
+	// store the data in the storage
+	if err := s.storage.Write(key, r); err != nil {
+		return err
+	}
+	// and broadcast the data to the network
+	buf := new(bytes.Buffer)
+	if _, err := io.Copy(buf, r); err != nil {
+		return err
+	}
+
+	p := &Payload{
+		Key:  key,
+		Data: buf.Bytes(),
+	}
+	return s.broadcastData(p)
 }
 
 func (s *FileServer) OnPeer(peer p2p.Peer) error {
