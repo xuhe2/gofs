@@ -55,6 +55,10 @@ type TCPTransport struct {
 	peers map[net.Addr]Peer
 }
 
+func (t *TCPTransport) GetListenAddr() string {
+	return t.ListenAddress
+}
+
 func NewTCPTransport(opts TCPTransportOpts) *TCPTransport {
 	return &TCPTransport{
 		TCPTransportOpts: opts,

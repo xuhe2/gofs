@@ -13,4 +13,5 @@ type Transport interface {
 	Consume() <-chan RPC    // consume the info from network, use RPC.Payload to get the info
 	Close() error           //close the transport
 	Dial(string) error      //dial to a peer
+	GetListenAddr() string  //get the PC's listen addr
 }
