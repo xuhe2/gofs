@@ -14,6 +14,9 @@ type TCPPeer struct {
 	// if we dial and accept, we are the outbound peer
 	// if we accept and dial, we are the inbound peer
 	outBound bool
+
+	// use pointer can make it unique
+	WaitGroup *sync.WaitGroup
 }
 
 // send the bytes info
@@ -29,8 +32,9 @@ func (p *TCPPeer) GetRemoteAddr() string {
 
 func NewTCPPeer(conn net.Conn, outBound bool) *TCPPeer {
 	return &TCPPeer{
-		Conn:     conn,
-		outBound: outBound,
+		Conn:      conn,
+		outBound:  outBound,
+		WaitGroup: &sync.WaitGroup{},
 	}
 }
 
@@ -148,9 +152,14 @@ func (t *TCPTransport) handleConnect(conn net.Conn, outBound bool) {
 		}
 		// set the network address in order to send back info
 		message.From = peer.RemoteAddr()
-
+		// wait
+		// if the data is not processed, the loop will be blocked
+		// so we need to use the `waitGroup` to wait for the data to be consumed
+		peer.WaitGroup.Add(1)
 		// handle the message
 		t.rpcChannel <- message
+
+		peer.WaitGroup.Wait()
 	}
 }
 

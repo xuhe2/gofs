@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/xuhe2/go-fs/p2p"
 )
@@ -62,7 +63,7 @@ type Message struct {
 	Payload any //use decoder can not use `any`
 }
 
-type MessagePayload struct {
+type MessageStoreFile struct {
 	Key  string
 	Data []byte
 }
@@ -88,24 +89,57 @@ func (s *FileServer) broadcastData(msg *Message) error {
 // store the data in the storage
 // and broadcast the data to the network
 func (s *FileServer) StoreData(key string, r io.Reader) error {
-	// copy the reader
+	//
+	// this is a test implement for large file
+	//
 	buf := new(bytes.Buffer)
-	tee := io.TeeReader(r, buf)
-
-	// store the data in the storage
-	if err := s.storage.Write(key, tee); err != nil {
-		return err
-	}
-	// and broadcast the data to the network
-	// we broadcast the data, so the address is the listenaddress of the server
-	msg := &Message{
-		From: s.Transport.GetListenAddr(),
-		Payload: MessagePayload{
+	msg := Message{
+		Payload: MessageStoreFile{
 			Key:  key,
 			Data: buf.Bytes(),
 		},
 	}
-	return s.broadcastData(msg)
+	if err := gob.NewEncoder(buf).Encode(msg); err != nil {
+		return err
+	}
+
+	// bordcast the data to the network
+	// the info is the key
+	for _, peer := range s.peers {
+		if err := peer.SendBytes(buf.Bytes()); err != nil {
+			return err
+		}
+	}
+
+	time.Sleep(time.Second) // ????
+
+	largeFilePayload := []byte("some large file info")
+	for _, peer := range s.peers {
+		if err := peer.SendBytes(largeFilePayload); err != nil {
+			return err
+		}
+	}
+
+	return nil
+
+	// // copy the reader
+	// buf := new(bytes.Buffer)
+	// tee := io.TeeReader(r, buf)
+
+	// // store the data in the storage
+	// if err := s.storage.Write(key, tee); err != nil {
+	// 	return err
+	// }
+	// // and broadcast the data to the network
+	// // we broadcast the data, so the address is the listenaddress of the server
+	// msg := &Message{
+	// 	From: s.Transport.GetListenAddr(),
+	// 	Payload: MessagePayload{
+	// 		Key:  key,
+	// 		Data: buf.Bytes(),
+	// 	},
+	// }
+	// return s.broadcastData(msg)
 }
 
 func (s *FileServer) OnPeer(peer p2p.Peer) error {
@@ -139,24 +173,29 @@ func (s *FileServer) runMainTaskLoop() {
 	for {
 		select {
 		case rpc := <-s.Transport.Consume():
+			// this is a test implement for large file
 			msg := &Message{}
 			if err := gob.NewDecoder(bytes.NewReader(rpc.Payload)).Decode(msg); err != nil {
 				log.Fatalf("failed to decode the payload: %v\n", err)
 			}
-			// // find the peer that send info
-			// peer, ok := s.peers[rpc.From.String()]
-			// if !ok {
-			// 	log.Fatalf("failed to find the peer: %s\n", rpc.From.String())
-			// }
-			//
-			// b := make([]byte, 1024)
-			// if _, err := peer.Read(b); err != nil {
-			// 	log.Fatalf("failed to read the data from peer %s: %s\n", peer.GetRemoteAddr(), err)
-			// }
-			// handle the msg
-			if err := s.handleMessage(msg); err != nil {
-				log.Fatalf("failed to handle the message: %v\n", err)
+			// find the peer that send info
+			peer, ok := s.peers[rpc.From.String()]
+			if !ok {
+				log.Fatalf("failed to find the peer: %s\n", rpc.From.String())
 			}
+			fmt.Printf("receive a message from %s\n", msg.Payload)
+
+			b := make([]byte, 1024)
+			if _, err := peer.Read(b); err != nil {
+				log.Fatalf("failed to read the data from peer %s: %s\n", peer.GetRemoteAddr(), err)
+			}
+			fmt.Printf("receive a message from peer %s: %s\n", peer.GetRemoteAddr(), string(b))
+			peer.(*p2p.TCPPeer).WaitGroup.Done()
+
+			// // handle the msg
+			// if err := s.handleMessage(msg); err != nil {
+			// 	log.Fatalf("failed to handle the message: %v\n", err)
+			// }
 		case <-s.quitSignalChannel:
 			// if main program send the quit signal
 			//stop the main task loop
@@ -169,7 +208,7 @@ func (s *FileServer) runMainTaskLoop() {
 // receive a pointer can perform better
 func (s *FileServer) handleMessage(message *Message) error {
 	switch v := message.Payload.(type) {
-	case *MessagePayload:
+	case *MessageStoreFile:
 		// if the payload is a MessagePayload
 		fmt.Printf("receive a message from %+v\n", v)
 	}
@@ -201,6 +240,5 @@ func (s *FileServer) connectBootstrapNodesNetwork() error {
 }
 
 func init() {
-	gob.Register(&Message{})
-	gob.Register(&MessagePayload{})
+	gob.Register(MessageStoreFile{})
 }
