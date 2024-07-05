@@ -138,13 +138,13 @@ func (s *FileServer) runMainTaskLoop() {
 
 	for {
 		select {
-		case msg := <-s.Transport.Consume():
-			payload := &Message{}
-			if err := gob.NewDecoder(bytes.NewReader(msg.Payload)).Decode(payload); err != nil {
+		case rpc := <-s.Transport.Consume():
+			msg := &Message{}
+			if err := gob.NewDecoder(bytes.NewReader(rpc.Payload)).Decode(msg); err != nil {
 				log.Fatalf("failed to decode the payload: %v\n", err)
 			}
 			// handle the msg
-			if err := s.handleMessage(payload); err != nil {
+			if err := s.handleMessage(msg); err != nil {
 				log.Fatalf("failed to handle the message: %v\n", err)
 			}
 		case <-s.quitSignalChannel:
