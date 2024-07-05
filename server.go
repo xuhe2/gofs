@@ -15,7 +15,7 @@ type FileServerOpts struct {
 	StorageRootFileName string
 	PathTransformFunc   PathTransformFunc
 	Transport           p2p.Transport
-	BootstrapNodes      []string // the peer need to connect
+	BootstrapNodes      []string // the peer need to connects
 }
 
 type FileServer struct {
@@ -158,12 +158,11 @@ func (s *FileServer) runMainTaskLoop() {
 // handle the payload
 // receive a pointer can perform better
 func (s *FileServer) handleMessage(message *Message) error {
-	// switch v := message.Payload.(type) {
-	// case MessagePayload:
-	// 	// if the payload is a MessagePayload
-	// 	fmt.Printf("receive a message from %+v\n", v)
-	// }
-	fmt.Printf("receive a message from %+v\n", message.Payload)
+	switch v := message.Payload.(type) {
+	case *MessagePayload:
+		// if the payload is a MessagePayload
+		fmt.Printf("receive a message from %+v\n", v)
+	}
 	return nil
 }
 
