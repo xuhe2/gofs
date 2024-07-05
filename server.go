@@ -177,25 +177,26 @@ func (s *FileServer) runMainTaskLoop() {
 			msg := &Message{}
 			if err := gob.NewDecoder(bytes.NewReader(rpc.Payload)).Decode(msg); err != nil {
 				log.Fatalf("failed to decode the payload: %v\n", err)
+				return
 			}
-			// find the peer that send info
-			peer, ok := s.peers[rpc.From.String()]
-			if !ok {
-				log.Fatalf("failed to find the peer: %s\n", rpc.From.String())
-			}
-			fmt.Printf("receive a message from %s\n", msg.Payload)
-
-			b := make([]byte, 1024)
-			if _, err := peer.Read(b); err != nil {
-				log.Fatalf("failed to read the data from peer %s: %s\n", peer.GetRemoteAddr(), err)
-			}
-			fmt.Printf("receive a message from peer %s: %s\n", peer.GetRemoteAddr(), string(b))
-			peer.(*p2p.TCPPeer).WaitGroup.Done()
-
-			// // handle the msg
-			// if err := s.handleMessage(msg); err != nil {
-			// 	log.Fatalf("failed to handle the message: %v\n", err)
+			// // find the peer that send info
+			// peer, ok := s.peers[rpc.From.String()]
+			// if !ok {
+			// 	log.Fatalf("failed to find the peer: %s\n", rpc.From.String())
 			// }
+			// fmt.Printf("receive a message from %s\n", msg.Payload)
+
+			// b := make([]byte, 1024)
+			// if _, err := peer.Read(b); err != nil {
+			// 	log.Fatalf("failed to read the data from peer %s: %s\n", peer.GetRemoteAddr(), err)
+			// }
+			// fmt.Printf("receive a message from peer %s: %s\n", peer.GetRemoteAddr(), string(b))
+			// peer.(*p2p.TCPPeer).WaitGroup.Done()
+
+			// handle the msg
+			if err := s.handleMessage(rpc.From.String(), msg); err != nil {
+				log.Fatalf("failed to handle the message: %v\n", err)
+			}
 		case <-s.quitSignalChannel:
 			// if main program send the quit signal
 			//stop the main task loop
@@ -206,12 +207,17 @@ func (s *FileServer) runMainTaskLoop() {
 
 // handle the payload
 // receive a pointer can perform better
-func (s *FileServer) handleMessage(message *Message) error {
-	switch v := message.Payload.(type) {
-	case *MessageStoreFile:
+func (s *FileServer) handleMessage(from string, msg *Message) error {
+	switch v := msg.Payload.(type) {
+	case MessageStoreFile:
 		// if the payload is a MessagePayload
-		fmt.Printf("receive a message from %+v\n", v)
+		return s.handleMessageStoreFile(from, v)
 	}
+	return nil
+}
+
+func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) error {
+	fmt.Printf("receive a message from %+v\n", msg)
 	return nil
 }
 
