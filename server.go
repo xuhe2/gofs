@@ -143,6 +143,16 @@ func (s *FileServer) runMainTaskLoop() {
 			if err := gob.NewDecoder(bytes.NewReader(rpc.Payload)).Decode(msg); err != nil {
 				log.Fatalf("failed to decode the payload: %v\n", err)
 			}
+			// // find the peer that send info
+			// peer, ok := s.peers[rpc.From.String()]
+			// if !ok {
+			// 	log.Fatalf("failed to find the peer: %s\n", rpc.From.String())
+			// }
+			//
+			// b := make([]byte, 1024)
+			// if _, err := peer.Read(b); err != nil {
+			// 	log.Fatalf("failed to read the data from peer %s: %s\n", peer.GetRemoteAddr(), err)
+			// }
 			// handle the msg
 			if err := s.handleMessage(msg); err != nil {
 				log.Fatalf("failed to handle the message: %v\n", err)

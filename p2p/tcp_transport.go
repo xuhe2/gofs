@@ -10,7 +10,7 @@ import (
 
 // the peer in the tcp transport connection
 type TCPPeer struct {
-	conn net.Conn
+	net.Conn
 	// if we dial and accept, we are the outbound peer
 	// if we accept and dial, we are the inbound peer
 	outBound bool
@@ -18,25 +18,25 @@ type TCPPeer struct {
 
 // send the bytes info
 func (p *TCPPeer) SendBytes(data []byte) error {
-	_, err := p.conn.Write(data)
+	_, err := p.Write(data)
 	return err
 }
 
 // get remote address
 func (p *TCPPeer) GetRemoteAddr() string {
-	return p.conn.RemoteAddr().String()
+	return p.RemoteAddr().String()
 }
 
 func NewTCPPeer(conn net.Conn, outBound bool) *TCPPeer {
 	return &TCPPeer{
-		conn:     conn,
+		Conn:     conn,
 		outBound: outBound,
 	}
 }
 
 // implement the interface, it can
 func (p *TCPPeer) Close() error {
-	return p.conn.Close()
+	return p.Close()
 }
 
 type TCPTransportOpts struct {
@@ -138,16 +138,16 @@ func (t *TCPTransport) handleConnect(conn net.Conn, outBound bool) {
 
 	message := RPC{}
 	for {
-		if err = t.Decoder.Decode(peer.conn, &message); err != nil {
+		if err = t.Decoder.Decode(peer, &message); err != nil {
 			if err == io.EOF {
-				fmt.Printf("Connection closed by peer: %v\n", peer.conn.RemoteAddr())
+				fmt.Printf("Connection closed by peer: %v\n", peer.RemoteAddr())
 				return
 			}
 			fmt.Printf("Error decoding message: %v\n", err)
 			continue
 		}
 		// set the network address in order to send back info
-		message.From = peer.conn.RemoteAddr()
+		message.From = peer.RemoteAddr()
 
 		// handle the message
 		t.rpcChannel <- message
