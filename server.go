@@ -86,8 +86,8 @@ func (s *FileServer) broadcastData(msg *Message) error {
 	return nil
 }
 
-// store the data in the storage
-// and broadcast the data to the network
+// not only store the data in the storage
+// but also broadcast the data to the network
 func (s *FileServer) StoreData(key string, r io.Reader) error {
 	//
 	// this is a test implement for large file
@@ -179,21 +179,9 @@ func (s *FileServer) runMainTaskLoop() {
 				log.Fatalf("failed to decode the payload: %v\n", err)
 				return
 			}
-			// // find the peer that send info
-			// peer, ok := s.peers[rpc.From.String()]
-			// if !ok {
-			// 	log.Fatalf("failed to find the peer: %s\n", rpc.From.String())
-			// }
-			// fmt.Printf("receive a message from %s\n", msg.Payload)
-
-			// b := make([]byte, 1024)
-			// if _, err := peer.Read(b); err != nil {
-			// 	log.Fatalf("failed to read the data from peer %s: %s\n", peer.GetRemoteAddr(), err)
-			// }
-			// fmt.Printf("receive a message from peer %s: %s\n", peer.GetRemoteAddr(), string(b))
-			// peer.(*p2p.TCPPeer).WaitGroup.Done()
 
 			// handle the msg
+			// the first msg include the key
 			if err := s.handleMessage(rpc.From.String(), msg); err != nil {
 				log.Fatalf("failed to handle the message: %v\n", err)
 			}
@@ -213,11 +201,20 @@ func (s *FileServer) handleMessage(from string, msg *Message) error {
 		// if the payload is a MessagePayload
 		return s.handleMessageStoreFile(from, v)
 	}
+	// if the type of payload is not recognized, we return an error
+	log.Fatalf("unknown message type: %T\n", msg.Payload)
 	return nil
 }
 
 func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) error {
-	fmt.Printf("receive a message from %+v\n", msg)
+	log.Printf("receive a file from %s\n", from)
+	peer, ok := s.peers[from]
+	if !ok {
+		return fmt.Errorf("failed to find the peer: %s\n", from)
+	}
+	// store the data in file
+	// the peer is a net.Conn, the second tcp data is true file
+	s.storage.Write(msg.Key, peer)
 	return nil
 }
 
